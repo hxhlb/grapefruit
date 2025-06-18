@@ -8,7 +8,6 @@ import bodyParser from "koa-bodyparser";
 import json from "koa-json";
 import logger from "koa-logger";
 import Router from "koa-router";
-import send from "koa-send";
 import { Server, Socket } from "socket.io";
 
 import env from "./lib/env.ts";
@@ -103,34 +102,9 @@ router
     }
   });
 
-if (!env.dev) {
-  app.use(async (ctx, next) => {
-    const guiRoot = path.join(import.meta.dirname, "..", "gui", "dist");
-    const opt = { root: guiRoot, maxage: 0, gzip: true };
-
-    if (ctx.path.startsWith("/api") || ctx.path.startsWith("/socket.io")) {
-      await next();
-    } else if (ctx.path.match(/(^\/(css|fonts|js|img)\/|\.js(.map)?$)/)) {
-      await send(ctx, ctx.path, opt);
-    } else {
-      await send(ctx, "/index.html", opt);
-    }
-  });
-} else {
-  router.get("/", async (ctx) => {
-    ctx.body =
-      "Server in development mode, please open frontend dev server in browser instead";
-    ctx.status = 404;
-  });
-}
-
 app.use(logger());
 app.use(json({ pretty: false, param: "pretty" }));
 app.use(router.routes()).use(router.allowedMethods()).use(bodyParser());
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
-});
 
 async function onConnection(socket: Socket) {
   const { device, bundle } = socket.handshake.query;
