@@ -1,11 +1,13 @@
 {
   "scripts": {
-    "node:flags": "node --experimental-strip-types",
-    "dev": "npm run node:flags --watch ../bin/igf.ts",
-    "test": "node --test tests/*.ts"
+    "node:devflags": "node --experimental-strip-types --env-file=../dev.env",
+    "dev": "npm run node:devflags --watch ../bin/igf.js",
+    "test": "node --env-file-if-exists=test.env --test tests/*.ts",
+    "check:type": "tsgo --noEmit"
   },
   "type": "module",
   "devDependencies": {
+    "@typescript/native-preview": "^7.0.0-dev.20250618.1",
     "socket.io-client": "^4.8.1"
   }
 }
