@@ -6,7 +6,7 @@ const isWindows = os.platform() === "win32";
 const npm = isWindows ? "npm.cmd" : "npm";
 const args = ["run", "dev"];
 
-const subprojects = ["agent", "server", "gui"] as const;
+const subprojects = ["agent", "server"] as const;
 const subdirs = subprojects.map((name) =>
   path.join(import.meta.dirname, "..", name),
 );

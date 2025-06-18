@@ -4,6 +4,6 @@
     "experimental-strip-types": true,
     "watch-preserve-output": true,
     "watch": true,
-    "watch-path": ["server/index.ts"]
+    "watch-path": ["server/**"]
   }
 }

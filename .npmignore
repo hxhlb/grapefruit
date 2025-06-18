@@ -1,2 +1,2 @@
 !igf-agent/dist/*.js
-!gui/dist
+!gui/.next
