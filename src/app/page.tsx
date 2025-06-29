@@ -1,19 +1,26 @@
 import Image from "next/image";
 
+import DeviceList from "@/components/device-list";
+import { ThemeToggle } from "@/components/theme-toggle";
+
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+    <div className="grid grid-rows-[20px_1fr_20px] bg-background min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center">
-        <Image
-          src="/logo.svg"
-          alt="Grapefruit Logo"
-          width={320}
-          height={60}
-          priority
-        />
-        <p className="text-lg sm:text-xl">
-          Runtime app inspection tool with friendly web user interface
+        <h1>
+          <Image
+            src="/logo.svg"
+            alt="Grapefruit"
+            width={320}
+            height={60}
+            priority
+          />
+        </h1>
+        <p>
+          <ThemeToggle />
         </p>
+        <p className="text-md">Select a device below to begin:</p>
+        <DeviceList />
       </main>
       <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
         <a

@@ -10,8 +10,7 @@ export async function GET() {
     .map(serializeDevice);
 
   if (process.env.NODE_ENV === "development") {
-    // insert mock devices
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 9; i++) {
       devices.push({
         name: `Mock Device ${i}`,
         id: `mock-${i}`,

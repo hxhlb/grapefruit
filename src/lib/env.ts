@@ -5,6 +5,8 @@ const envAsNumber = (name: string, defaultValue: number) =>
 const dict = {
   dev: devmode,
   timeout: envAsNumber("FRIDA_TIMEOUT", 1000),
+  port: envAsNumber("PORT", 31337),
+  host: process.env.HOST || "localhost",
 };
 
 export default dict;
