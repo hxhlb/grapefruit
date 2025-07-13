@@ -1,7 +1,8 @@
 import { createServer } from "node:http";
 import next from "next";
 
-import createWebsocketServer from "./socket-server.ts";
+import createWebsocketServer from "./ws.ts";
+import { openBrowser } from "./shell.ts";
 import env from "../src/lib/env.ts";
 
 const { dev, host, port } = env;
@@ -21,8 +22,15 @@ export default async function serve() {
       process.exit(1);
     })
     .listen(port, () => {
-      console.log(`> Ready on http://${host}:${port}`);
+      const url = `http://${host}:${port}`;
+      console.log(`> Ready on ${url}`);
+      openBrowser(url);
     });
 }
+
+process.on("SIGINT", () => {
+  console.log("bye");
+  process.exit(0);
+});
 
 serve();
