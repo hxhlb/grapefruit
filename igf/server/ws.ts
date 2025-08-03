@@ -24,19 +24,23 @@ export default function createWebsocketServer(server: HttpServer) {
     });
   });
 
-  io.of('/session').on('connection', (socket) => {
+  io.of("/session").on("connection", (socket) => {
     const { device, bundle } = socket.handshake.query;
-    if (typeof device !== 'string' || typeof bundle !== 'string') {
+    if (typeof device !== "string" || typeof bundle !== "string") {
       console.error("Invalid device or bundle in handshake query");
       socket.disconnect();
       return;
     }
 
-    console.debug(`establishing session for device: ${device}, bundle: ${bundle}`);
+    console.debug(
+      `establishing session for device: ${device}, bundle: ${bundle}`,
+    );
 
-    io.on('rpc', (params: RPCParam) => {
-      console.debug(`RPC call: ${params.method} with args: ${JSON.stringify(params.args)}`);
-    })
+    io.on("rpc", (params: RPCParam) => {
+      console.debug(
+        `RPC call: ${params.method} with args: ${JSON.stringify(params.args)}`,
+      );
+    });
   });
 
   server.on("close", () => {
