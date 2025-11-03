@@ -1,14 +1,26 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert";
 import type { AddressInfo } from "node:net";
+import type { ServerType } from "@hono/node-server";
 
 import frida from "frida";
 import io from "socket.io-client";
+import { serve } from "@hono/node-server";
 
-import server from "../index.ts";
+import app from "../app.ts";
+import factory from "../io.ts";
+
+let server: ServerType;
 
 before(async () => {
-  await new Promise<void>((resolve) => server.listen(0, resolve));
+  server = serve({
+    fetch: app.fetch,
+    port: 0, // Use random port for testing
+  });
+  factory(server);
+  await new Promise<void>((resolve) => {
+    server.on("listening", () => resolve());
+  });
 });
 
 after(async () => {

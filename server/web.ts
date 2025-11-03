@@ -1,6 +1,7 @@
 import http from "node:http";
 import path from "node:path";
 
+import { toNodeListener } from "@hono/node-server";
 import next from "next";
 
 import app from "./app.ts";
@@ -17,7 +18,7 @@ const opt = {
   distDir,
 };
 
-const koaHandler = app.callback();
+const honoHandler = toNodeListener(app);
 
 export default async function serve() {
   // use ts-ignore for a workaround for this issue:
@@ -34,7 +35,7 @@ export default async function serve() {
 
   function handleRequest(req: http.IncomingMessage, res: http.ServerResponse) {
     if (req.url?.startsWith("/api")) {
-      koaHandler(req, res);
+      honoHandler(req, res);
     } else {
       handler(req, res);
     }

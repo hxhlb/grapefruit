@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { Readable } from "node:stream";
 
-import Koa from "koa";
-import bodyParser from "koa-bodyparser";
-import json from "koa-json";
-import Router from "koa-router";
-import logger from "koa-logger";
+import { Hono } from "hono";
+import { logger as honoLogger } from "hono/logger";
+import { prettyJSON } from "hono/pretty-json";
+import { toNodeListener } from "@hono/node-server";
 import { Server } from "socket.io";
 import frida from "frida";
 
@@ -77,40 +77,42 @@ const mockDeviceInfo: frida.SystemParameters = {
   uuid: "mock-device-uuid",
 };
 
-// Set up Koa app
-const app = new Koa();
-const router = new Router({ prefix: "/api" });
+// Set up Hono app
+const app = new Hono();
+const api = new Hono();
 
 // Middleware to simulate delay for network requests
-async function delayMiddleware(ctx: Koa.Context, next: Koa.Next) {
+async function delayMiddleware(c: any, next: any) {
   const delay = Math.random() * 300 + 100; // Random delay between 100-400ms
   await new Promise((resolve) => setTimeout(resolve, delay));
   await next();
 }
 
-router
-  .get("/devices", async (ctx) => {
-    ctx.body = mockDevices;
+api
+  .get("/devices", async (c) => {
+    return c.json(mockDevices);
   })
-  .get("/device/:device/apps", async (ctx) => {
-    ctx.body = mockApps.filter(() => Math.random() > 0.25);
+  .get("/device/:device/apps", async (c) => {
+    return c.json(mockApps.filter(() => Math.random() > 0.25));
   })
-  .get("/device/:device/icon/:bundle", async (ctx) => {
+  .get("/device/:device/icon/:bundle", async (c) => {
     const iconPath = path.join(import.meta.dirname, "..", "assets", "app.png");
-    ctx.type = "image/png";
-    ctx.body = fs.createReadStream(iconPath);
+    const stream = fs.createReadStream(iconPath);
+    return c.body(Readable.toWeb(stream), 200, {
+      "Content-Type": "image/png",
+    });
   })
-  .get("/device/:device/info", async (ctx) => {
-    ctx.body = mockDeviceInfo;
+  .get("/device/:device/info", async (c) => {
+    return c.json(mockDeviceInfo);
   });
 
-// Set up Koa middleware
+// Set up Hono middleware
 app.use(delayMiddleware);
-app.use(logger());
-app.use(json({ pretty: false, param: "pretty" }));
-app.use(router.routes()).use(router.allowedMethods()).use(bodyParser());
+app.use(honoLogger());
+app.use("/api/*", prettyJSON());
+app.route("/api", api);
 
-const server = http.createServer(app.callback());
+const server = http.createServer(toNodeListener(app));
 const io = new Server(server);
 
 const devicesNamespace = io.of("/devices");

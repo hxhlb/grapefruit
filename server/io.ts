@@ -5,6 +5,7 @@ import { Server, Socket } from "socket.io";
 
 import env from "./lib/env.ts";
 import { ispawn, agent as readAgent } from "./lib/utils.ts";
+import { type ServerType } from "@hono/node-server";
 
 const manager = frida.getDeviceManager();
 
@@ -91,7 +92,7 @@ function onDeviceChange() {
 io.of("/devices").on("connection", (socket: Socket) => {});
 io.of("/session").on("connection", onConnection);
 
-export default function factory(server: http.Server) {
+export default function factory(server: ServerType) {
   server
     .on("listening", () => manager.changed.connect(onDeviceChange))
     .on("close", () => manager.changed.disconnect(onDeviceChange));

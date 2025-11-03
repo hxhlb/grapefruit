@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import { Readable } from "node:stream";
 
 import frida from "frida";
-import Koa from "koa";
-import bodyParser from "koa-bodyparser";
-import json from "koa-json";
-import logger from "koa-logger";
-import Router from "koa-router";
+import { Hono } from "hono";
+import { logger } from "hono/logger";
+import { prettyJSON } from "hono/pretty-json";
+import { createMiddleware } from "hono/factory";
 
 import env from "./lib/env.ts";
 
@@ -16,38 +16,53 @@ import {
 } from "./lib/serializer.ts";
 
 const manager = frida.getDeviceManager();
-const app = new Koa();
-const router = new Router({ prefix: "/api" });
+const app = new Hono();
 
-async function fetchDevice(ctx: Koa.Context, next: Koa.Next) {
-  const deviceId = ctx.params.device;
+app.use(logger());
+app.use("/api/*", prettyJSON());
+
+const api = new Hono();
+
+const getDeviceMiddleware = createMiddleware<{
+  Variables: {
+    device: frida.Device;
+  };
+}>(async (c, next) => {
+  const deviceId = c.req.param("device");
+  if (!deviceId) {
+    return c.json({ error: "device not found" }, 404);
+  }
+
   const device = await frida.getDevice(deviceId);
-  if (!device) ctx.throw(404, "device not found");
-  ctx.state.device = device;
+  if (!device) {
+    return c.json({ error: "device not found" }, 404);
+  }
+  c.set("device", device);
   await next();
-}
+});
 
-router
-  .get("/devices", async (ctx) => {
+api
+  .get("/devices", async (c) => {
     const skip = new Set(["local", "socket", "barebone"]);
     const devices = await frida.enumerateDevices();
-    ctx.body = devices.filter((dev) => !skip.has(dev.id)).map(serializeDevice);
+    return c.json(
+      devices.filter((dev) => !skip.has(dev.id)).map(serializeDevice),
+    );
   })
-  .get("/device/:device/apps", fetchDevice, async (ctx) => {
-    const device = ctx.state.device as frida.Device;
+  .get("/device/:device/apps", getDeviceMiddleware, async (c) => {
+    const device = c.get("device");
     const apps = await device.enumerateApplications();
-    ctx.body = apps.map(serializeApp);
+    return c.json(apps.map(serializeApp));
   })
-  .get("/device/:device/icon/:bundle", fetchDevice, async (ctx) => {
-    const device = ctx.state.device as frida.Device;
+  .get("/device/:device/icon/:bundle", getDeviceMiddleware, async (c) => {
+    const device = c.get("device");
+    const bundle = c.req.param("bundle");
     const apps = await device
       .enumerateApplications({
-        identifiers: [ctx.params.bundle],
+        identifiers: [bundle],
         scope: frida.Scope.Full,
       })
       .catch(() => []);
-
-    ctx.type = "image/png";
 
     const app = apps.at(0);
     if (app) {
@@ -58,36 +73,40 @@ router
       if (icons && icons.length) {
         const ico = icons.find((i) => i.format === "png");
         if (ico && ico.image) {
-          ctx.body = ico.image;
-          return;
+          return c.body(ico.image, 200, {
+            "Content-Type": "image/png",
+          });
         }
       }
     }
 
     const placeholder = path.join(import.meta.dirname, "assets", "app.png");
-    ctx.body = fs.createReadStream(placeholder);
+    const stream = fs.createReadStream(placeholder);
+
+    return c.body(Readable.toWeb(stream), 200, {
+      "Content-Type": "image/png",
+    });
   })
-  .get("/device/:device/info", fetchDevice, async (ctx) => {
-    const device = ctx.state.device as frida.Device;
-    ctx.body = await device.querySystemParameters();
+  .get("/device/:device/info", getDeviceMiddleware, async (c) => {
+    const device = c.get("device");
+    return c.json(await device.querySystemParameters());
   })
-  .put("/devices/remote/:hostname", async (ctx) => {
-    await manager.addRemoteDevice(ctx.params.hostname);
-    ctx.status = 204;
+  .put("/devices/remote/:hostname", async (c) => {
+    const hostname = c.req.param("hostname");
+    await manager.addRemoteDevice(hostname);
+    return c.body(null, 204);
   })
-  .delete("/devices/remote/:hostname", async (ctx) => {
-    const address = ctx.params.hostname;
+  .delete("/devices/remote/:hostname", async (c) => {
+    const address = c.req.param("hostname");
     const device = await manager.getDeviceById(address, env.timeout);
     if (device) {
       await manager.removeRemoteDevice(address);
-      ctx.status = 204;
+      return c.body(null, 204);
     } else {
-      ctx.throw(404, "remote device not found");
+      return c.json({ error: "remote device not found" }, 404);
     }
   });
 
-app.use(logger());
-app.use(json({ pretty: false, param: "pretty" }));
-app.use(router.routes()).use(router.allowedMethods()).use(bodyParser());
+app.route("/api", api);
 
 export default app;
